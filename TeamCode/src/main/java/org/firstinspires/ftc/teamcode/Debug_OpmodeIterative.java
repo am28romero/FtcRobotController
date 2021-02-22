@@ -55,17 +55,28 @@ public class Debug_OpmodeIterative extends OpMode {
 		// - This uses basic math to combine motions and is easier to drive straight.
 		mecanumDrive_Cartesian(-gamepad1.left_stick_y, gamepad1.left_stick_x, gamepad1.right_stick_x);
 
+		if (gamepad1.x) {
+			motors[0].setPower(0.8);
+			motors[1].setPower(0.8);
+			motors[2].setPower(-0.9);
+			toggleMotor = !toggleMotor;
+		}
+
+		// else if (gamepad1.b)
+		//	for (DcMotor motor:motors) motor.setPower(0.0);
+
 		if (gamepad1.right_trigger>0.3 && shooterServo.getPosition()>0.2) shooterServo.setPosition(0.2);
 		else if (gamepad1.right_trigger<=0.3 && shooterServo.getPosition()<0.5) shooterServo.setPosition(0.5);
 		else if (shooterServo.getPosition()<0.2 || shooterServo.getPosition()>0.5) shooterServo.setPosition(0.5);
-		while (gamepad1.x) {
-			if (!toggleMotor) {
-				motors[0].setPower(0.8);
-				motors[1].setPower(0.8);
-				motors[2].setPower(-0.9);
-			} else for (DcMotor motor:motors) motor.setPower(0.0);
-			toggleMotor = !toggleMotor;
-		}
+
+//		if (gamepad1.x) {
+//			//if (!toggleMotor) {
+//			motors[0].setPower(0.8);
+//			motors[1].setPower(0.8);
+//			motors[2].setPower(-0.9);
+//			} else for (DcMotor motor:motors) motor.setPower(0.0);
+//			//toggleMotor = !toggleMotor;
+//		}
 	}
 
 	public void mecanumDrive_Cartesian(double y,double x,double rotation) {
@@ -90,6 +101,7 @@ public class Debug_OpmodeIterative extends OpMode {
 		driveMotors[3].setPower(wheelSpeeds[3]);
 	}
 
+	/*
 	private void gamepadHandler()  {
 		if (gamepad1.left_stick_x + gamepad1.left_stick_y + gamepad1.right_stick_x + gamepad1.left_stick_y > 0.15) {
 			// - This uses basic math to combine motions and is easier to drive straight.
@@ -117,8 +129,8 @@ public class Debug_OpmodeIterative extends OpMode {
 			for (DcMotor motor : motors) motor.setPower(0);
 			Log.i("Emergency Stop:", "Activated, Stopping Everything");
 			stop();
-		}*/
-	}
+		}
+	}*/
 
 	@Override
 	public void stop() {
