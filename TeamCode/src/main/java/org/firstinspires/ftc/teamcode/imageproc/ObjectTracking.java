@@ -52,7 +52,7 @@ public class ObjectTracking extends LinearOpMode {
 
 	@Override
 	public void runOpMode() {
-		// Make an instance of the phone camera
+		//  Make an instance of the phone camera
 		int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
 		phoneCam = OpenCvCameraFactory.getInstance().createInternalCamera(OpenCvInternalCamera.CameraDirection.BACK, cameraMonitorViewId);
 

@@ -12,7 +12,7 @@ import java.text.DecimalFormat;
 public class BB_OpmodeIterative extends OpMode {
 	// Configurations
 
-	// Declare members.
+	//  Declare members.
 	//private final ElapsedTime runtime = new ElapsedTime();
 	final public DcMotor[] motors = new DcMotor[4];
 	final double[] wheelSpeeds = new double[4];

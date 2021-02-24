@@ -54,7 +54,7 @@ public class Debug_OpmodeIterative extends OpMode {
 		//turn  = gamepad1.right_stick_x;
 		//extraAxis = -gamepad1.right_stick_y;
 
-		// - This uses basic math to combine motions and is easier to drive straight.
+		//- This uses basic math to combine motions and is easier to drive straight.
 		mecanumDrive_Cartesian(-gamepad1.left_stick_y, gamepad1.left_stick_x, gamepad1.right_stick_x);
 
 		if (gamepad1.x) {
