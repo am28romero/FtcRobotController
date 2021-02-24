@@ -43,6 +43,8 @@ public class Debug_OpmodeIterative extends OpMode {
 		shooterServo.setPosition(0.5);
 		for (DcMotor driveMotor:driveMotors)
 			driveMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+		for (DcMotor motor:motors)
+			motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
 	}
 
 	@Override
@@ -58,12 +60,12 @@ public class Debug_OpmodeIterative extends OpMode {
 		if (gamepad1.x) {
 			motors[0].setPower(0.8);
 			motors[1].setPower(0.8);
-			motors[2].setPower(-0.9);
-			toggleMotor = !toggleMotor;
+			//toggleMotor = !toggleMotor;
 		}
-
-		// else if (gamepad1.b)
-		//	for (DcMotor motor:motors) motor.setPower(0.0);
+		if (gamepad1.b)
+			for (DcMotor motor:motors) motor.setPower(0.0);
+		if (gamepad1.left_trigger>0.3)
+			for (int i=0; motors[2].getPower()<0.9; i++) motors[2].setPower(0.04*i);
 
 		if (gamepad1.right_trigger>0.3 && shooterServo.getPosition()>0.2) shooterServo.setPosition(0.2);
 		else if (gamepad1.right_trigger<=0.3 && shooterServo.getPosition()<0.5) shooterServo.setPosition(0.5);
