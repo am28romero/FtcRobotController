@@ -41,7 +41,7 @@ import java.text.DecimalFormat;
 
 @TeleOp(name="Main OpMode", group="Releases")
 public class OpmodeIterative extends OpMode {
-	//Configurations
+	// Configurations
 	//final int topHandler = 1;
 	///final String decFormat = "0.000";
 	//final String telemetryFloatFormat = "%.3f";
