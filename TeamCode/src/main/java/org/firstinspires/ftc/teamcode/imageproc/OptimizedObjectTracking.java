@@ -1,3 +1,4 @@
+
 /*
  * Copyright (c) 2019 OpenFTC Team
  *
@@ -19,7 +20,7 @@
  * SOFTWARE.
  */
 
-package org.firstinspires.teamcode.imageproc;
+package org.firstinspires.ftc.teamcode.imageproc;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
@@ -42,99 +43,73 @@ import org.openftc.easyopencv.OpenCvPipeline;
 import java.util.ArrayList;
 import java.util.List;
 
-@Autonomous(name="Object Tracking (BareBones)", group="Debug")
-public class BBObjectTracking extends LinearOpMode {
+@Autonomous(name="Object Tracking (optimized)", group="Beta Releases")
+public class OptimizedObjectTracking extends LinearOpMode {
 	OpenCvCamera phoneCam;
-	final Size cameraRes = new Size(320, 240);
+	final Size cameraRes = new Size(320*2, 240*2);
 	final int cameraType = 0;
 
 	@Override
 	public void runOpMode() {
-		// Make an instance of the phone camera
 		int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
 		phoneCam = OpenCvCameraFactory.getInstance().createInternalCamera(OpenCvInternalCamera.CameraDirection.BACK, cameraMonitorViewId);
-
 		phoneCam.openCameraDeviceAsync(new OpenCvCamera.AsyncCameraOpenListener() {
 			@Override
 			public void onOpened() {
-				// Start Streaming
 				phoneCam.startStreaming((int) cameraRes.width, (int) cameraRes.height, OpenCvCameraRotation.UPRIGHT);
 			}
 		});
 
 		waitForStart();
 		resetStartTime();
-		telemetry.addLine("Starting...");
 		phoneCam.setPipeline(new Pipeline());
-
 		while (opModeIsActive()) {
-			if(gamepad1.a) {
-				phoneCam.stopStreaming();
-			}
+			if(gamepad1.start && gamepad1.back) phoneCam.stopStreaming();
 			sleep(100);
 		}
 	}
 
 	class Pipeline extends OpenCvPipeline {
 		boolean viewportPaused = false;
-
-		// H ranges 0-180, S and V range 0-255
 		final Scalar maxValues = new Scalar(50, 255, 255);
 		final Scalar minValues = new Scalar(15, 150, 150);
-		double runtime = 0;
 		double approxDistance;
 
 		List<MatOfPoint> contours = new ArrayList<>();
 		MatOfPoint2f approxCurve,contour2f;
-		MatOfPoint points;
-
 		Mat tmp = new Mat(cameraRes,cameraType, new Scalar(0));
 		Mat output = new Mat(cameraRes,cameraType, new Scalar(0));
-		Mat hsvimage = new Mat(cameraRes,cameraType, new Scalar(0));
-		Mat thresh = new Mat(cameraRes,cameraType, new Scalar(0));
-		Mat dst = new Mat(cameraRes,cameraType, new Scalar(0));
 		Mat hierarchy = new Mat();
-		Mat dilateElement = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(15, 15));
-		Mat erodeElement = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(5, 5));
-		Rect rect;
-		Mat blurredImage = new Mat();
-		Mat mask = new Mat();
-		Mat morphOutput = new Mat();
+		Mat dilateElement = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(12, 12));
+		Mat erodeElement = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(4, 4));
+		Rect boundingRect;
 
 
 		@Override
 		public Mat processFrame(Mat input) {
-			Imgproc.blur(input, blurredImage, new Size(7, 7));
-			Imgproc.cvtColor(blurredImage, hsvimage, Imgproc.COLOR_RGB2HSV);
-			Core.inRange(hsvimage,minValues,maxValues, thresh);
+			Imgproc.blur(input, tmp, new Size(3, 3));
+			Imgproc.cvtColor(tmp, tmp, Imgproc.COLOR_RGB2HSV);
+			Core.inRange(tmp,minValues,maxValues, tmp);
 
-			Imgproc.erode(thresh, thresh, erodeElement);
-			Imgproc.erode(thresh, thresh, erodeElement);
-			Imgproc.dilate(thresh, thresh, dilateElement);
-			Imgproc.dilate(thresh, thresh, dilateElement);
+			Imgproc.erode(tmp, tmp, erodeElement);
+			Imgproc.erode(tmp, tmp, erodeElement);
+			Imgproc.dilate(tmp, tmp, dilateElement);
+			Imgproc.dilate(tmp, tmp, dilateElement);
 
-			List<MatOfPoint> contours = new ArrayList<>();
-			Imgproc.findContours(thresh, contours, hierarchy,
-					Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
-
-			input.copyTo(output);
+			contours = new ArrayList<>();
+			Imgproc.findContours(tmp, contours, hierarchy,
+					Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
+			output.copySize(input);
 			for (int contourIdx=0; contourIdx < contours.size(); contourIdx++) {
-				// Minimum size allowed for consideration
-				MatOfPoint2f approxCurve = new MatOfPoint2f();
-				MatOfPoint2f contour2f = new MatOfPoint2f(contours.get(contourIdx).toArray());
+				approxCurve = new MatOfPoint2f();
+				contour2f = new MatOfPoint2f(contours.get(contourIdx).toArray());
 
-				//Processing on mMOP2f1 which is in type MatOfPoint2f
-				double approxDistance = Imgproc.arcLength(contour2f, true)*0.02;
+				approxDistance = Imgproc.arcLength(contour2f, true)*0.02;
 				Imgproc.approxPolyDP(contour2f, approxCurve, approxDistance, true);
+				boundingRect = Imgproc.boundingRect(new MatOfPoint(approxCurve.toArray()));
 
-				//Convert back to MatOfPoint
-				MatOfPoint points = new MatOfPoint(approxCurve.toArray());
-
-				// Get bounding rect of contour
-				Rect rect = Imgproc.boundingRect(points);
-
-				Imgproc.rectangle(output, new Point(rect.x, rect.y),
-						new Point(rect.x + rect.width, rect.y + rect.height),
+				Imgproc.rectangle(output, new Point(boundingRect.x, boundingRect.y),
+						new Point(boundingRect.x + boundingRect.width, boundingRect.y + boundingRect.height),
 						new Scalar(255, 0, 0, 100), 3);
 			}
 

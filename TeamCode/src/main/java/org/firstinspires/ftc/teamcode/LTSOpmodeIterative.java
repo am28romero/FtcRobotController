@@ -11,8 +11,8 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import java.text.DecimalFormat;
 
 
-@TeleOp(name="Latest Optimized Release", group="Releases")
-public class Debug_OpmodeIterative extends OpMode {
+@TeleOp(name="LTS Opmode", group="Releases")
+public class LTSOpmodeIterative extends OpMode {
 	// Configurations
 
 	// Declare members.
@@ -22,6 +22,8 @@ public class Debug_OpmodeIterative extends OpMode {
 	private DcMotor armMotor;
 	private Servo shooterServo, armServo;
 	private final double[] wheelSpeeds = new double[4];
+	private boolean toggleMotor = false;
+	private boolean prevX = false;
 	//double fb, lr, turn, extraAxis;
 
 	@Override
@@ -52,9 +54,9 @@ public class Debug_OpmodeIterative extends OpMode {
 	}
 
 	public void mecanumDrive_Cartesian(double y,double x,double rotation) {
-		wheelSpeeds[0] = -(y+x+rotation);
+		wheelSpeeds[0] = y+x+rotation;
 		wheelSpeeds[1] = y-x-rotation;
-		wheelSpeeds[2] = -(y-x+rotation);
+		wheelSpeeds[2] = y-x+rotation;
 		wheelSpeeds[3] = y+x-rotation;
 
 		double top = Math.max(Math.abs(wheelSpeeds[0]), Math.max(Math.abs(wheelSpeeds[1]),
@@ -66,34 +68,36 @@ public class Debug_OpmodeIterative extends OpMode {
 				wheelSpeeds[i] = wheelSpeeds[i] / top;
 
 		// Send calculated power to motors
-		for (int i = 0; i < driveMotors.length; i++) driveMotors[i].setPower(wheelSpeeds[i]);
+		driveMotors[0].setPower(-wheelSpeeds[0]);
+		driveMotors[1].setPower(wheelSpeeds[1]);
+		driveMotors[2].setPower(-wheelSpeeds[2]);
+		driveMotors[3].setPower(wheelSpeeds[3]);
 	}
 
 	private void gamepadHandler()  {
 		//- This uses basic math to combine motions and is easier to drive straight.
 		mecanumDrive_Cartesian(-gamepad1.left_stick_y, gamepad1.left_stick_x, gamepad1.right_stick_x);
 
-		boolean curr[] = {gamepad1.x, gamepad1.left_trigger>0.3, gamepad1.dpad_right};
-		boolean prev[] = new boolean[curr.length];
+		boolean currX = gamepad1.x;
 
 		// If the previous X-button input is the same as the current input
-		if (curr[0] && !prev[0]) {
+		if (currX && !prevX) {
 			shooterMotors[0].setPower(0.8);
 			shooterMotors[1].setPower(0.8);
+			toggleMotor = !toggleMotor;
 		}
-		prev[0] = curr[0];
+		prevX = currX;
 
-		if (gamepad1.left_trigger>0.3 && !prev[1])
+		if (gamepad1.left_trigger>0.3)
 			for (int i = 0; shooterMotors[2].getPower()<0.9; i++) shooterMotors[2].setPower(0.04*i);
-		if (gamepad1.dpad_right && !prev[2]) {
-			while (armMotor.getCurrentPosition() < 200) armMotor.setPower(0.4);
-			armMotor.setPower(0.0);
-		}
-		prev = curr;
 
 		if (gamepad1.right_trigger>0.3 && shooterServo.getPosition()>0.2) shooterServo.setPosition(0.2);
 		else if (gamepad1.right_trigger<=0.3 && shooterServo.getPosition()<0.5) shooterServo.setPosition(0.5);
 		else if (shooterServo.getPosition()<0.2 || shooterServo.getPosition()>0.5) shooterServo.setPosition(0.5);
+
+		if (gamepad1.dpad_right) {
+			armMotor.setTargetPosition(200);
+		}
 
 		if (gamepad1.start && gamepad1.back) {
 			for (DcMotor motor : driveMotors) motor.setPower(0);

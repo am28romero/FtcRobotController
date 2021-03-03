@@ -1,4 +1,4 @@
-package org.firstinspires.teamcode;
+package org.firstinspires.ftc.teamcode;
 
 public class OptimizedAutonomousOpmode {
 }

@@ -46,138 +46,71 @@ import java.util.List;
 @Autonomous(name="Object Tracking", group="Snippets")
 public class ObjectTracking extends LinearOpMode {
 	OpenCvCamera phoneCam;
-	final Size cameraRes = new Size(320, 240);
+	final Size cameraRes = new Size(320*2, 240*2);
 	final int cameraType = 0;
-	Pipeline pipeline = new Pipeline();
 
 	@Override
 	public void runOpMode() {
-		//  Make an instance of the phone camera
 		int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
 		phoneCam = OpenCvCameraFactory.getInstance().createInternalCamera(OpenCvInternalCamera.CameraDirection.BACK, cameraMonitorViewId);
-
 		phoneCam.openCameraDeviceAsync(new OpenCvCamera.AsyncCameraOpenListener() {
 			@Override
 			public void onOpened() {
-				// Start Streaming
 				phoneCam.startStreaming((int) cameraRes.width, (int) cameraRes.height, OpenCvCameraRotation.UPRIGHT);
 			}
 		});
 
-
-		telemetry.addLine("HSV Values:  ")
-				.addData("Hue",pipeline.maxValues.val[0] + " - " + pipeline.minValues.val[0])
-				.addData("Saturation",pipeline.maxValues.val[1] + " - " + pipeline.minValues.val[1])
-				.addData("Value (Brightness)",pipeline.maxValues.val[2] + " - " + pipeline.minValues.val[2]);
-		telemetry.addLine("Setup Finished Successfully. Waiting for Start...");
-		telemetry.update();
-
 		waitForStart();
 		resetStartTime();
-
-		telemetry.addLine("Starting...");
-		phoneCam.setPipeline(pipeline);
-
-		double[] tmpminValues = pipeline.minValues.val.clone();
-		double[] tmpmaxValues = pipeline.maxValues.val.clone();
-		float lrdrive, fbdrive, turn, extraAxis;
-
-		lrdrive = gamepad1.left_stick_x;
-//			fbdrive = -gamepad1.left_stick_y;
-//			turn = gamepad1.right_stick_x;
-//			extraAxis = -gamepad1.right_stick_y;
-		for (int i= 0;Math.abs(lrdrive)>=0.75 && i<5;i++) {
-			if (lrdrive>=0.75) {
-				tmpminValues[0] = pipeline.minValues.val[0] + 5.0;
-				tmpmaxValues[0] = pipeline.minValues.val[0] + 5.0;
-				sleep(50);
-			} else if (lrdrive<=-0.75) {
-				tmpminValues[0] = pipeline.minValues.val[0] - 5.0;
-				tmpmaxValues[0] = pipeline.minValues.val[0] - 5.0;
-				sleep(50);
-			}
-			pipeline.minValues.set(tmpminValues);
-			pipeline.minValues.set(tmpmaxValues);
-		}
+		phoneCam.setPipeline(new Pipeline());
 		while (opModeIsActive()) {
-			telemetry.addData("Run Time", "%.5f", getRuntime());
-			//telemetry.addData("Gamepad", "leftx (%.2f), lefty (%.2f), rightx (%.2f), righty (%.2f)", lrdrive, fbdrive, turn, extraAxis);
-			// Display the Gamepad Stick info
-//			telemetry.addLine("Gamepad" + "\r\n")
-//					.addData("lrdrive", "%.3f", lrdrive)
-//					.addData("fbdrive", "%.3f", fbdrive)
-//					.addData("turn", "%.3f", turn)
-//					.addData("extraAxis", "%.3f", extraAxis);
-			telemetry.addLine("HSV Values:  ")
-					.addData("Hue",pipeline.maxValues.val[0] + " - " + pipeline.minValues.val[0])
-					.addData("Saturation",pipeline.maxValues.val[1] + " - " + pipeline.minValues.val[1])
-					.addData("Value (Brightness)",pipeline.maxValues.val[2] + " - " + pipeline.minValues.val[2]);
-			telemetry.update();
-
+			if(gamepad1.start && gamepad1.back) phoneCam.stopStreaming();
 			sleep(100);
 		}
 	}
 
 	class Pipeline extends OpenCvPipeline {
-		// H ranges 0-180, S and V range 0-255
-		Scalar maxValues = new Scalar(45, 255, 255);
-		Scalar minValues = new Scalar(15, 180, 120);
-		double approxDistance;
 		boolean viewportPaused = false;
+		final Scalar maxValues = new Scalar(50, 255, 255);
+		final Scalar minValues = new Scalar(15, 150, 150);
+		double approxDistance;
 
-		Point center = new Point();
 		List<MatOfPoint> contours = new ArrayList<>();
-		MatOfPoint2f approxCurve, contour2f;
-		MatOfPoint points;
-
+		MatOfPoint2f approxCurve,contour2f;
+		Mat tmp = new Mat(cameraRes,cameraType, new Scalar(0));
 		Mat output = new Mat(cameraRes,cameraType, new Scalar(0));
-		Mat hsvimage = new Mat(cameraRes,cameraType, new Scalar(0));
-		Mat thresh = new Mat(cameraRes,cameraType, new Scalar(0));
 		Mat hierarchy = new Mat();
-		Mat dilateElement = Imgproc.getStructuringElement(Imgproc.MORPH_DILATE, new Size(15, 15));
-		Mat erodeElement = Imgproc.getStructuringElement(Imgproc.MORPH_ERODE, new Size(5, 5));
-		Mat blurredImage = new Mat();
-		Rect boundingRect = new Rect();
+		Mat dilateElement = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(12, 12));
+		Mat erodeElement = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(4, 4));
+		Rect boundingRect;
 
 
 		@Override
 		public Mat processFrame(Mat input) {
-			Imgproc.blur(input, blurredImage, new Size(5, 5));
-			Imgproc.cvtColor(blurredImage, hsvimage, Imgproc.COLOR_RGB2HSV);
-			Core.inRange(hsvimage,minValues,maxValues, thresh);
+			Imgproc.blur(input, tmp, new Size(3, 3));
+			Imgproc.cvtColor(tmp, tmp, Imgproc.COLOR_RGB2HSV);
+			Core.inRange(tmp,minValues,maxValues, tmp);
 
-			Imgproc.erode(thresh, thresh, erodeElement);
-			Imgproc.erode(thresh, thresh, erodeElement);
-			Imgproc.dilate(thresh, thresh, dilateElement);
-			Imgproc.dilate(thresh, thresh, dilateElement);
+			Imgproc.erode(tmp, tmp, erodeElement);
+			Imgproc.erode(tmp, tmp, erodeElement);
+			Imgproc.dilate(tmp, tmp, dilateElement);
+			Imgproc.dilate(tmp, tmp, dilateElement);
 
 			contours = new ArrayList<>();
-			Imgproc.findContours(thresh, contours, hierarchy,
+			Imgproc.findContours(tmp, contours, hierarchy,
 					Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
-
 			output.copySize(input);
-			if (contours.size()>0) {
-				for (int i = 0; i<contours.size(); i++) {
-					// Minimum size allowed for consideration
-					contour2f = new MatOfPoint2f(contours.get(i).toArray());
+			for (int contourIdx=0; contourIdx < contours.size(); contourIdx++) {
+				approxCurve = new MatOfPoint2f();
+				contour2f = new MatOfPoint2f(contours.get(contourIdx).toArray());
 
-					//Processing on mMOP2f1 which is in type MatOfPoint2f
-					approxCurve = new MatOfPoint2f();
-					approxDistance = Imgproc.arcLength(contour2f, true)*0.04;
-					Imgproc.approxPolyDP(contour2f, approxCurve, approxDistance, true);
+				approxDistance = Imgproc.arcLength(contour2f, true)*0.02;
+				Imgproc.approxPolyDP(contour2f, approxCurve, approxDistance, true);
+				boundingRect = Imgproc.boundingRect(new MatOfPoint(approxCurve.toArray()));
 
-					//Convert back to MatOfPoint
-					points = new MatOfPoint(approxCurve.toArray());
-
-					// Get bounding rect of contour
-					boundingRect = Imgproc.boundingRect(points);
-					center = new Point((boundingRect.x+boundingRect.br().x)*0.5, (boundingRect.y+boundingRect.br().y)*0.5);
-					Imgproc.drawMarker(output,center,new Scalar(0,100+(i*25),0, 100),
-							Imgproc.MARKER_TILTED_CROSS);
-					Imgproc.rectangle(output, new Point(boundingRect.x, boundingRect.y),
-							new Point(boundingRect.x + boundingRect.width, boundingRect.y + boundingRect.height),
-							new Scalar(0, 255, 0, 50), 1);
-				}
+				Imgproc.rectangle(output, new Point(boundingRect.x, boundingRect.y),
+						new Point(boundingRect.x + boundingRect.width, boundingRect.y + boundingRect.height),
+						new Scalar(255, 0, 0, 100), 3);
 			}
 
 			return output;
@@ -186,6 +119,7 @@ public class ObjectTracking extends LinearOpMode {
 		@Override
 		public void onViewportTapped() {
 			viewportPaused = !viewportPaused;
+
 			if(viewportPaused) phoneCam.pauseViewport();
 			else phoneCam.resumeViewport();
 		}
